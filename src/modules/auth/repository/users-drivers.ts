@@ -1,0 +1,87 @@
+/** auth repository: drivers. No status column; a missing row or blocked phone means no access. */
+import type { RowDataPacket } from 'mysql2/promise';
+import { pool } from '../../../shared/db/pool.js';
+import { isRawPhoneAdminBlocked } from './mobile-registry.js';
+import type { ResolvedUser, UserProfileDto } from '../types.js';
+import {
+  candidateFormats,
+  placeholders,
+  joinName,
+  normalisePhoneToE164,
+  placeholder,
+} from './users-shared.js';
+
+/* DB row */
+type DriverRow = RowDataPacket & {
+  id: number;
+  phone: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  created_at: Date | null;
+};
+
+/* Phone lookup */
+export async function findDriverByPhone(mobile: string): Promise<ResolvedUser | null> {
+  const fmts = candidateFormats(mobile);
+  const [rows] = await pool.execute<DriverRow[]>(
+    `SELECT id, phone
+       FROM drivers
+      WHERE phone IN (${placeholders(fmts)})
+      ORDER BY id ASC
+      LIMIT 1`,
+    fmts,
+  );
+  if (!rows.length) return null;
+  const r = rows[0]!;
+  return {
+    role: 'driver',
+    entityId: String(r.id),
+    userId: String(r.id),
+    status: 'active',
+    requiresProfileSetup: false,
+  };
+}
+
+/* Status by id: null if missing, 'inactive' if the phone is admin-blocked, else 'active'. */
+export async function getDriverStatusById(id: string): Promise<ResolvedUser['status'] | null> {
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    'SELECT id, phone FROM drivers WHERE id = ? LIMIT 1',
+    [id],
+  );
+  if (!rows.length) return null;
+  const blocked = await isRawPhoneAdminBlocked(rows[0]!['phone'] as string | null);
+  return blocked ? 'inactive' : 'active';
+}
+
+/* Profile loaders */
+export async function loadDriverProfile(id: string): Promise<UserProfileDto> {
+  const [rows] = await pool.execute<DriverRow[]>(
+    `SELECT id, phone, first_name, last_name, email, created_at
+       FROM drivers WHERE id = ? LIMIT 1`,
+    [id],
+  );
+  if (!rows.length) return placeholder(id);
+  const r = rows[0]!;
+  const phone = normalisePhoneToE164(r.phone ?? '');
+  return {
+    id: String(r.id),
+    displayName: joinName(r.first_name, r.last_name) || 'Driver',
+    email: r.email ?? null,
+    phoneIndia: phone,
+    phoneGlobal: phone,
+    memberSince: (r.created_at ?? new Date()).toISOString(),
+  };
+}
+
+export async function loadDriverIdentityDetails(
+  id: string,
+): Promise<{ profile: UserProfileDto; requiresProfileSetup: boolean } | null> {
+  const profile = await loadDriverProfile(id);
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    `SELECT id FROM drivers WHERE id = ? LIMIT 1`,
+    [id],
+  );
+  if (!rows.length) return null;
+  return { profile, requiresProfileSetup: false };
+}
