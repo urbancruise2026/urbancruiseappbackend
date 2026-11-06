@@ -6,7 +6,7 @@ export default defineConfig({
 
     // Tests live in __tests__ folders next to the code they test.
     include: ['src/**/__tests__/**/*.test.ts'],
-    setupFiles: ['src/modules/auth/__tests__/setup.ts'],
+    setupFiles: ['src/__tests__/setup.ts'],
 
     globals: false,
 
