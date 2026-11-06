@@ -1,4 +1,10 @@
-/** auth repository: uc_staff. Only status 'active' may log in. */
+/**
+ * auth repository: uc_staff. Only employeeStatus 'Active' (trimmed,
+ * case-insensitive) may log in. The old `status` column is not used for login.
+ *
+ * The table has no full_name column: the display name is built from
+ * firstName + middleName + lastName.
+ */
 import type { RowDataPacket } from 'mysql2/promise';
 import { pool } from '../../../shared/db/pool.js';
 import { isRawPhoneAdminBlocked } from './mobile-registry.js';
@@ -11,22 +17,36 @@ import {
   normStatus,
 } from './users-shared.js';
 
-/* DB row */
+/** Shown when a staff row has no first, middle or last name. */
+const UC_STAFF_FALLBACK_NAME = 'UC Staff';
+
+/* DB row (only the columns this file reads) */
 type UcStaffRow = RowDataPacket & {
   id: number;
-  full_name: string;
+  firstName: string | null;
+  middleName: string | null;
+  lastName: string | null;
   email: string | null;
   mobile: string;
-  department: string;
-  status: 'active' | 'suspended' | 'left';
-  created_at: Date;
+  /** Employee state, e.g. 'Active'. Only 'active' (any case) may log in. */
+  employeeStatus: string | null;
+  created_at: Date | null;
 };
+
+/** 'Ravi', null, 'Sharma' → 'Ravi Sharma'. Empty or blank parts are skipped. */
+function fullName(r: Pick<UcStaffRow, 'firstName' | 'middleName' | 'lastName'>): string {
+  const name = [r.firstName, r.middleName, r.lastName]
+    .map(part => (part ?? '').trim())
+    .filter(Boolean)
+    .join(' ');
+  return name || UC_STAFF_FALLBACK_NAME;
+}
 
 /* Phone lookup */
 export async function findUcStaffByPhone(mobile: string): Promise<ResolvedUser | null> {
   const fmts = candidateFormats(mobile);
   const [rows] = await pool.execute<UcStaffRow[]>(
-    `SELECT id, mobile, status FROM uc_staff WHERE mobile IN (${placeholders(fmts)}) LIMIT 1`,
+    `SELECT id, mobile, employeeStatus FROM uc_staff WHERE mobile IN (${placeholders(fmts)}) LIMIT 1`,
     fmts,
   );
   if (!rows.length) return null;
@@ -35,20 +55,20 @@ export async function findUcStaffByPhone(mobile: string): Promise<ResolvedUser |
     role: 'uc',
     entityId: String(r.id),
     userId: String(r.id),
-    status: normStatus(r.status, { nullIsActive: false }),
+    status: normStatus(r.employeeStatus, { nullIsActive: false }),
     requiresProfileSetup: false,
   };
 }
 
-/* Status by id: 'suspended' and 'left' are inactive. */
+/* Status by id: any employeeStatus other than 'Active' is inactive. */
 export async function getUcStaffStatusById(id: string): Promise<ResolvedUser['status'] | null> {
   const [rows] = await pool.execute<UcStaffRow[]>(
-    'SELECT id, status, mobile FROM uc_staff WHERE id = ? LIMIT 1',
+    'SELECT id, employeeStatus, mobile FROM uc_staff WHERE id = ? LIMIT 1',
     [id],
   );
   if (!rows.length) return null;
   const r = rows[0]!;
-  if (normStatus(r.status, { nullIsActive: false }) !== 'active') return 'inactive';
+  if (normStatus(r.employeeStatus, { nullIsActive: false }) !== 'active') return 'inactive';
   // A staff row can still be 'active' while its number is admin-blocked.
   return (await isRawPhoneAdminBlocked(r.mobile)) ? 'inactive' : 'active';
 }
@@ -56,7 +76,7 @@ export async function getUcStaffStatusById(id: string): Promise<ResolvedUser['st
 /* Profile loaders */
 export async function loadUcStaffProfile(id: string): Promise<UserProfileDto> {
   const [rows] = await pool.execute<UcStaffRow[]>(
-    `SELECT id, full_name, email, mobile, created_at
+    `SELECT id, firstName, middleName, lastName, email, mobile, created_at
        FROM uc_staff WHERE id = ? LIMIT 1`,
     [id],
   );
@@ -65,11 +85,12 @@ export async function loadUcStaffProfile(id: string): Promise<UserProfileDto> {
   const phone = normalisePhoneToE164(r.mobile);
   return {
     id: String(r.id),
-    displayName: r.full_name,
+    displayName: fullName(r),
     email: r.email ?? null,
     phoneIndia: phone,
     phoneGlobal: phone,
-    memberSince: r.created_at.toISOString(),
+    // Same fallback as customers, vendors and drivers when the date is missing.
+    memberSince: (r.created_at ?? new Date()).toISOString(),
   };
 }
 
