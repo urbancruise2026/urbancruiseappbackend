@@ -1,0 +1,127 @@
+# CI/CD for the Urban Cruise API.
+#
+# Pull request to main -> run every check (no deploy).
+# Push to main         -> run every check, then deploy to the CloudPanel VPS.
+# If any check fails, the server is never touched.
+name: CI / Deploy API
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: # run by hand from the Actions tab (deploys only from main)
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint, test and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      HUSKY: '0' # git hooks are for developers, not CI
+
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js (version from .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install packages
+        run: npm ci --no-audit --no-fund
+
+      - name: Check formatting
+        run: npx prettier --check .
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Check architecture rules
+        run: npm run depcruise
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Check the build output
+        run: |
+          test -f dist/index.js || { echo "dist/index.js missing"; exit 1; }
+          test -d dist/assets || { echo "dist/assets missing"; exit 1; }
+          if find dist -path '*__tests__*' | grep -q .; then
+            echo "test files found in dist"; exit 1
+          fi
+
+      - name: Create release package
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: |
+          echo "${GITHUB_SHA}" > REVISION
+          tar -czf release.tar.gz dist package.json package-lock.json .npmrc REVISION
+          tar -tzf release.tar.gz | grep -qx 'dist/index.js'
+          ls -lh release.tar.gz
+
+      - name: Save release package
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: release.tar.gz
+          retention-days: 7
+          if-no-files-found: error
+
+  deploy:
+    name: Deploy to production
+    needs: verify
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    # Never run two deploys at the same time; queue them instead.
+    concurrency:
+      group: deploy-urbancruise-api
+      cancel-in-progress: false
+
+    steps:
+      - name: Get the release package
+        uses: actions/download-artifact@v4
+        with:
+          name: release
+
+      - name: Set up SSH key
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Deploy to server
+        env:
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o IdentitiesOnly=yes \
+              -o StrictHostKeyChecking=yes \
+              -o BatchMode=yes \
+              -o ConnectTimeout=20 \
+              -o ServerAliveInterval=30 \
+              "${VPS_USER}@${VPS_HOST}" \
+              "${GITHUB_SHA}" < release.tar.gz
+
+      - name: Remove SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

@@ -1,8 +1,14 @@
 /**
- * PM2 config. Deploy:
+ * PM2 config for running the API by hand (local machine or a test box).
  *   npm ci && npm run build && npm prune --omit=dev
  *   pm2 start ecosystem.config.cjs --env production && pm2 save
  * (Build needs dev dependencies, so prune only after building.)
+ *
+ * PRODUCTION does NOT use this file. GitHub Actions deploys with
+ * ~/deploy.sh on the server, which uses
+ * ~/htdocs/app.urbancruise.in/shared/ecosystem.config.cjs.
+ * Never start this file on the production server: it would run a second
+ * copy of the app.
  */
 module.exports = {
   apps: [
