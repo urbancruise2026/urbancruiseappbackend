@@ -15,6 +15,12 @@ export const AUTH_ERROR = {
   ACCOUNT_NOT_PROVISIONED: 'account_not_provisioned',
   ACCOUNT_SUSPENDED: 'account_suspended',
   ACCOUNT_LOCKED: 'account_locked',
+  /**
+   * 409: the login number matches more than one active account of this role
+   * (e.g. the same uc_staff.officeMobileNumber on two Active staff). Login is
+   * refused rather than picking one; an admin must fix the data.
+   */
+  ACCOUNT_AMBIGUOUS: 'account_ambiguous',
   CAPTCHA_REQUIRED: 'captcha_required',
   MOBILE_BLOCKED: 'mobile_blocked',
   OTP_SEND_FAILED: 'otp_send_failed',
