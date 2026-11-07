@@ -40,7 +40,7 @@ const schema = z.object({
   DB_USER: z.string().min(1),
   DB_PASSWORD: z.string().min(1),
   DB_NAME: z.string().min(1),
-  DB_POOL_LIMIT: z.coerce.number().int().positive().max(200).default(20),
+  DB_POOL_LIMIT: z.coerce.number().int().positive().max(20).default(10),
   DB_CONNECT_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
 
   // Redis
