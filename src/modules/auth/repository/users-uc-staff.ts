@@ -1,11 +1,24 @@
 /**
- * auth repository: uc_staff. Only employeeStatus 'Active' (trimmed,
- * case-insensitive) may log in. The old `status` column is not used for login.
+ * auth repository: uc_staff.
+ *
+ * Source of the data: `pinaak.uc_staff` is a VIEW over the saarthi (HR)
+ * database, not a table. Saarthi is the only source of truth for staff, so
+ * every create / update / deactivate / delete done in saarthi is seen here
+ * immediately. The view is defined in db/pinaak/views/uc_staff.sql; see
+ * docs/runbooks/uc-staff-view.md. It is read-only: never write to uc_staff.
+ *
+ * What the view's columns mean:
+ *   officeMobileNumber  saarthi uc_staff_contacts.office_number
+ *   email               saarthi uc_staff_contacts.office_email
+ *   employeeStatus      'Active' only when saarthi uc_staff.is_active = 1 AND
+ *                       uc_staff_employment.employee_status = 'Active';
+ *                       otherwise 'Inactive'. Only 'Active' (trimmed,
+ *                       case-insensitive) may log in.
  *
  * Login number: UC staff sign in with their OFFICE number
- * (uc_staff.officeMobileNumber), not the personal `mobile` column. The same
- * column is used for the refresh-time "number still linked" check, the admin
- * block check and the profile phone, so all of them agree on one number.
+ * (officeMobileNumber), not a personal number. The same column is used for
+ * the admin block check and the profile phone, so all of them agree on one
+ * number.
  *
  * Office SIMs get reassigned, so one number can appear on several rows (an
  * old staff member who left and the new one). Only Active rows compete:
@@ -13,7 +26,7 @@
  *   - no Active row          → the account is reported inactive
  *   - more than one Active   → refused (409 account_ambiguous); never guess
  *
- * The table has no full_name column: the display name is built from
+ * There is no full_name column: the display name is built from
  * firstName + middleName + lastName.
  */
 import type { RowDataPacket } from 'mysql2/promise';
