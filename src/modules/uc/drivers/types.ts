@@ -1,6 +1,7 @@
 /**
  * uc.drivers — types for the UC Directory drivers list.
- * Reads the `drivers` table, joined to `vendors` for the vendor name.
+ * Reads the `drivers` table, joined to `vendors` and `vendor_companies`
+ * for the vendor's display name. See repository.ts.
  */
 import type { DirectorySort } from '../directory.js';
 
@@ -17,7 +18,8 @@ export type DriverDirectoryItem = {
   city: string | null;
   /** drivers.vendor_id; null when not linked to a vendor. */
   vendorId: string | null;
-  /** The linked vendor's company_name (or name when that is empty). */
+  /** vendor_companies.company_name, falling back to vendors.name when the
+   *  company row has none. */
   vendorName: string | null;
   /** drivers.license_number */
   licenseNo: string | null;

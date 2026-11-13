@@ -56,10 +56,20 @@ const MATRIX: Record<string, Rule> = {
   'create:Feedback': anyCustomer,
 
   // UC Directory (read only): every UC staff member sees all customers,
-  // vendors and drivers. Never other roles: these are other people's data.
+  // vendors, drivers and colleagues. Never other roles: these are other
+  // people's data.
   'read:DirectoryCustomer': ucStaff,
   'read:DirectoryVendor': ucStaff,
   'read:DirectoryDriver': ucStaff,
+  'read:DirectoryStaff': ucStaff,
+  // Personal mobile numbers inside the staff list. This entry is the ROLE
+  // gate only. The department check cannot live here: this matrix sees just
+  // the Identity carried by the access token, and the department is read
+  // from Saarthi per request so an HR change applies at once. The real
+  // decision is canSeePersonalNumbers() in modules/uc/workspace.ts, which
+  // picks a database view that has no personal-number column for everyone
+  // outside HR.
+  'read:DirectoryStaffPersonalPhone': ucStaff,
 };
 
 export function can(identity: Identity, action: Action, subject: Subject): boolean {
