@@ -47,6 +47,20 @@ export type AppConfigLegal = {
   termsVersion: string;
 };
 
+/**
+ * Spiritual Tours is a SEPARATE app published by Urban Cruise. This app only
+ * points customers at it, so all it needs is the store page.
+ *
+ * Resolved per request from the caller's platform, exactly like
+ * version.updateUrl: an iPhone never gets a Play Store link it cannot open.
+ * null means not published on that store yet — the app then shows the
+ * download button disabled rather than opening a dead link.
+ */
+export type AppConfigSpiritualToursApp = {
+  /** Store page for the caller's platform; null if not published there yet. */
+  url: string | null;
+};
+
 /** GET /config/app payload. Some version fields are computed per request. */
 export type AppConfigData = {
   version: AppConfigVersion;
@@ -54,6 +68,7 @@ export type AppConfigData = {
   featureFlags: AppConfigFeatureFlags;
   support: AppConfigSupport;
   legal: AppConfigLegal;
+  spiritualToursApp: AppConfigSpiritualToursApp;
   serviceCities: string[];
 };
 

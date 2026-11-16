@@ -18,6 +18,24 @@ export const STORE_LINKS: Readonly<Record<'android' | 'ios', string | null>> = {
   ios: null, // TODO(config): real App Store link — app not published yet
 };
 
+/**
+ * Store pages for the SEPARATE Spiritual Tours app. Same shape and rules as
+ * STORE_LINKS above: null means not published on that store, and the app
+ * shows its download button disabled instead of opening a dead link.
+ *
+ * Both are null today — the app is not on either store yet. Setting one here
+ * turns the button on for that platform with no app release.
+ *
+ * TODO(config): set android once live, e.g.
+ *   'https://play.google.com/store/apps/details?id=<package id>'
+ * TODO(config): set ios once live, e.g.
+ *   'https://apps.apple.com/app/id<Apple ID>'
+ */
+export const SPIRITUAL_TOURS_STORE_LINKS: Readonly<Record<'android' | 'ios', string | null>> = {
+  android: null,
+  ios: null,
+};
+
 /** Force update below `min`, soft banner below `latest`. Semver, min <= latest. */
 export const VERSION_POLICY = {
   min: '1.0.0', // TODO(config): raise when a critical fix lands
@@ -89,6 +107,8 @@ export function getStaticAppConfig(): AppConfigData {
     featureFlags: { ...FEATURE_FLAGS },
     support: { ...SUPPORT },
     legal: { ...LEGAL },
+    // Filled in per request by the service, from the caller's platform.
+    spiritualToursApp: { url: null },
     serviceCities: [...SERVICE_CITIES],
   };
 }

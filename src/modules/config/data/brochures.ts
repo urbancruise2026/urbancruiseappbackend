@@ -53,7 +53,7 @@ export const BROCHURES: readonly BrochureEntry[] = [
     tier: 'royal_vip',
     title: 'Force Traveller 12 Seater — Royal VIP',
     youtubePlaylistId: null,
-    videoIds: [],
+    videoIds: ['ERSeZAtyCNs'],
     features: [
       'A/C',
       '1x1 VIP Maharaja Seat',

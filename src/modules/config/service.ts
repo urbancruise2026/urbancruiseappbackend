@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto';
 import { lt as semverLt } from 'semver';
 
 import { logger } from '../../shared/logger/index.js';
-import { getStaticAppConfig, STORE_LINKS } from './data/app-config.js';
+import { getStaticAppConfig, SPIRITUAL_TOURS_STORE_LINKS, STORE_LINKS } from './data/app-config.js';
 import { getStaticBrochures } from './data/brochures.js';
 import type {
   AppConfigContext,
@@ -29,6 +29,10 @@ export async function getAppConfig(ctx: AppConfigContext): Promise<AppConfigResu
   const base = getStaticAppConfig();
 
   const updateUrl = STORE_LINKS[ctx.platform];
+
+  // Separate app, same rule: send only the caller's own store page, so the
+  // app never offers a link the device cannot open. null disables the button.
+  const spiritualToursUrl = SPIRITUAL_TOURS_STORE_LINKS[ctx.platform];
 
   // Equal versions need no update.
   const belowMin = semverLt(ctx.appVersion, base.version.minSupported);
@@ -54,6 +58,7 @@ export async function getAppConfig(ctx: AppConfigContext): Promise<AppConfigResu
       updateAvailable: updateUrl !== null && belowLatest,
       updateUrl,
     },
+    spiritualToursApp: { url: spiritualToursUrl },
   };
 
   // Hash of the exact body sent. Stable because we build the object ourselves.
