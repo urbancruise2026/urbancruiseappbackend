@@ -128,3 +128,126 @@ export type BrochureEntry = {
 export type BrochureCatalogData = {
   brochures: BrochureEntry[];
 };
+
+/* ---------- Spiritual tours (GET /config/spiritual-tours) ---------- */
+
+/**
+ * The band of the country a tour belongs to. The app groups the list under
+ * one heading per region, in the order defined by REGION_ORDER in
+ * data/spiritual-tours.ts — never in the order the regions appear here.
+ *
+ * Only 'north' and 'west' have tours today. The rest are listed so adding a
+ * southern tour is a data edit, not a contract change; a region with no
+ * tours produces no heading in the app.
+ */
+export type SpiritualTourRegion = 'north' | 'south' | 'east' | 'west' | 'central' | 'northeast';
+
+/**
+ * Which line icon the app draws beside the tour title. A closed set, because
+ * each value maps to a hand-drawn SVG in the app — the backend cannot
+ * introduce a new one without an app release. An app that receives a value
+ * it does not know falls back to 'temple' rather than rendering nothing.
+ */
+export type SpiritualTourIcon = 'temple' | 'trishul' | 'om' | 'ganesh' | 'shivling';
+
+/**
+ * One named stop. The list card joins the names; the detail screen shows
+ * them as a row of picture tiles, which is why the image lives here rather
+ * than in a parallel array that could fall out of step with the names.
+ */
+export type SpiritualTourPlace = {
+  name: string;
+  /** Absolute https URL, or null until ops uploads the tile photograph. */
+  imageUrl: string | null;
+};
+
+/**
+ * The four facts in the strip under the destinations. Every one is a
+ * DISPLAY STRING set by ops, not a parsed value: "10 – 12 Days" and
+ * "May – Oct" are ranges, "Car / Tempo / Bus" is a list, and the app only
+ * ever prints them. Typing them as numbers or enums would buy nothing and
+ * would stop ops writing "Apr – Jun, Sep – Oct" when that is the truth.
+ * null hides that one fact rather than printing a dash.
+ */
+export type SpiritualTourFacts = {
+  duration: string | null;
+  travelMode: string | null;
+  bestSeason: string | null;
+  difficulty: string | null;
+};
+
+/** One row of the Itinerary tab. */
+export type SpiritualTourItineraryDay = {
+  /** "Day 1", "Day 3 – 4" — a label, because days are often grouped. */
+  dayLabel: string;
+  title: string;
+  detail: string | null;
+};
+
+/**
+ * One row of the Pricing tab. `amount` is a display string including the
+ * currency, e.g. "₹24,500" — the backend never does money arithmetic here
+ * and the app never parses it. A real quotation is priced by the team
+ * through the enquiry flow; this tab is indicative only.
+ */
+export type SpiritualTourPrice = {
+  label: string;
+  amount: string;
+  note: string | null;
+};
+
+export type SpiritualTourEntry = {
+  /** Stable slug, e.g. "char-dham-yatra". Used as the detail screen's param. */
+  id: string;
+  region: SpiritualTourRegion;
+  /** Main title, e.g. "Char Dham Yatra". */
+  title: string;
+  /**
+   * The smaller qualifier the design sets in brackets after the title, e.g.
+   * "(North, MP)". null when the title stands alone.
+   */
+  titleNote: string | null;
+  /**
+   * Named stops, shown on the card as joined names and on the detail screen
+   * as picture tiles. Empty for tours the design describes in prose instead
+   * — those carry `summary`.
+   */
+  places: SpiritualTourPlace[];
+  /** Prose description, used on the card when `places` is empty. */
+  summary: string | null;
+  icon: SpiritualTourIcon;
+  /**
+   * Absolute https URL of the LIST CARD photograph, or null until ops
+   * uploads one. The app draws its own branded tile for null, so a missing
+   * photo never leaves a broken image.
+   */
+  imageUrl: string | null;
+
+  /* ----- Detail screen -----
+   * Everything below is read only by the detail screen. All of it is
+   * optional: a tour with none of it still lists and still opens, it just
+   * shows empty states inside its tabs. That lets ops publish a tour as
+   * soon as its name and stops are known, and fill the rest in later.
+   */
+
+  /** One line under the title, e.g. "A sacred pilgrimage to the four …". */
+  tagline: string | null;
+  /** Carousel images, in order. Empty falls back to `imageUrl`, then to a tile. */
+  heroImages: string[];
+  facts: SpiritualTourFacts;
+  /** The "About the Tour" body on the Overview tab. */
+  overview: string | null;
+  /** The ticked list in the Tour Highlights panel. */
+  highlights: string[];
+  itinerary: SpiritualTourItineraryDay[];
+  inclusions: string[];
+  exclusions: string[];
+  pricing: SpiritualTourPrice[];
+  /** Small print under the price rows, e.g. what the figures exclude. */
+  pricingNote: string | null;
+};
+
+/** GET /config/spiritual-tours payload. Entries keep the catalog's order. */
+export type SpiritualTourCatalogData = {
+  tours: SpiritualTourEntry[];
+};

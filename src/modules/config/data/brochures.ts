@@ -84,7 +84,7 @@ export const BROCHURES: readonly BrochureEntry[] = [
     tier: 'economy',
     title: 'Force Traveller 13 Seater — Economy',
     youtubePlaylistId: null,
-    videoIds: [],
+    videoIds: ['crTGevmpaf4'],
     // TODO(data): the source description ends with just "Basic" (the app's
     // chip shows it as the music system). Confirm the wording with ops.
     features: ['Basic A/C', 'Non-Recline Seat', 'Basic'],
@@ -106,7 +106,7 @@ export const BROCHURES: readonly BrochureEntry[] = [
     tier: 'premium',
     title: 'Force Traveller 13 Seater — Premium',
     youtubePlaylistId: null,
-    videoIds: [],
+    videoIds: ['KEKIxqXUy08'],
     features: ['2018-20 Model', 'A/C', 'Recline Seat', 'Charging Point', 'Music System + Speaker'],
     specs: {
       modelYear: '2018-20',
@@ -126,7 +126,7 @@ export const BROCHURES: readonly BrochureEntry[] = [
     tier: 'royal',
     title: 'Force Traveller 13 Seater — Royal',
     youtubePlaylistId: null,
-    videoIds: [],
+    videoIds: ['NStb4xBupXo'],
     features: [...ROYAL_TRAVELLER_FEATURES],
     specs: { ...ROYAL_TRAVELLER_SPECS },
   },
@@ -139,7 +139,7 @@ export const BROCHURES: readonly BrochureEntry[] = [
     tier: 'royal',
     title: 'Force Traveller 26 Seater — Royal',
     youtubePlaylistId: null,
-    videoIds: [],
+    videoIds: ['YuISGPswwBA'],
     // TODO(data): the app copies this description from the 13-seat Royal.
     // Confirm the 26-seat facilities with ops.
     features: [...ROYAL_TRAVELLER_FEATURES],
@@ -156,7 +156,7 @@ export const BROCHURES: readonly BrochureEntry[] = [
     tier: 'royal_vip',
     title: 'Force Urbania 15 Seater — Royal VIP',
     youtubePlaylistId: null,
-    videoIds: [],
+    videoIds: ['9bEwEf-efxM'],
     features: [
       'A/C',
       '2x1 Recline Seat',

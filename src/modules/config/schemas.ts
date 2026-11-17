@@ -154,3 +154,152 @@ export function assertBrochureCatalog(entries: unknown): void {
     .join('\n');
   throw new Error(`[config/brochures] invalid brochure catalog:\n${issues}`);
 }
+
+/* ---------- Spiritual tours catalog (static data, checked at startup) ---------- */
+
+/** Lowercase words joined by single hyphens, e.g. "char-dham-yatra". */
+const TOUR_ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/**
+ * Absolute https URL. http is rejected outright: iOS App Transport Security
+ * and Android's cleartext policy both block it, so an http image would fail
+ * on device rather than merely look wrong.
+ */
+const HTTPS_URL_RE = /^https:\/\/[^\s<>"]+$/;
+
+const httpsUrl = z.string().max(500).regex(HTTPS_URL_RE, 'must be an absolute https URL');
+
+const SpiritualTourPlaceSchema = z.strictObject({
+  name: displayText(60),
+  imageUrl: httpsUrl.nullable(),
+});
+
+const SpiritualTourFactsSchema = z.strictObject({
+  duration: displayText(40).nullable(),
+  travelMode: displayText(60).nullable(),
+  bestSeason: displayText(40).nullable(),
+  difficulty: displayText(40).nullable(),
+});
+
+const SpiritualTourItineraryDaySchema = z.strictObject({
+  dayLabel: displayText(24),
+  title: displayText(120),
+  detail: displayText(600).nullable(),
+});
+
+const SpiritualTourPriceSchema = z.strictObject({
+  label: displayText(80),
+  amount: displayText(40),
+  note: displayText(160).nullable(),
+});
+
+export const SpiritualTourEntrySchema = z.strictObject({
+  id: z.string().max(64).regex(TOUR_ID_RE, 'must look like "char-dham-yatra"'),
+  region: z.enum(['north', 'south', 'east', 'west', 'central', 'northeast']),
+  title: displayText(80),
+  titleNote: displayText(60).nullable(),
+  places: z.array(SpiritualTourPlaceSchema).max(12),
+  summary: displayText(240).nullable(),
+  icon: z.enum(['temple', 'trishul', 'om', 'ganesh', 'shivling']),
+  imageUrl: httpsUrl.nullable(),
+
+  // Detail screen. All optional in practice — empty arrays and nulls are a
+  // tour that is listed but not yet written up.
+  tagline: displayText(160).nullable(),
+  heroImages: z.array(httpsUrl).max(10),
+  facts: SpiritualTourFactsSchema,
+  overview: displayText(1200).nullable(),
+  highlights: z.array(displayText(120)).max(12),
+  itinerary: z.array(SpiritualTourItineraryDaySchema).max(40),
+  inclusions: z.array(displayText(160)).max(30),
+  exclusions: z.array(displayText(160)).max(30),
+  pricing: z.array(SpiritualTourPriceSchema).max(12),
+  pricingNote: displayText(400).nullable(),
+});
+
+/**
+ * The whole catalog. Besides each entry's own shape it checks the rules the
+ * app relies on:
+ *   - ids are unique, because the detail screen is addressed by id;
+ *   - every entry has something to show under its title — `places` or
+ *     `summary` — so no card can render with a blank second line;
+ *   - no repeated place name, hero image or itinerary day label inside one
+ *     tour, each of which would be a copy-paste slip rather than intent.
+ */
+export const SpiritualTourCatalogSchema = z
+  .array(SpiritualTourEntrySchema)
+  .min(1)
+  .superRefine((entries, ctx) => {
+    const seenId = new Map<string, number>();
+
+    entries.forEach((e, i) => {
+      const firstId = seenId.get(e.id);
+      if (firstId !== undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [i, 'id'],
+          message: `duplicate tour id "${e.id}" (first at index ${firstId})`,
+        });
+      } else {
+        seenId.set(e.id, i);
+      }
+
+      if (e.places.length === 0 && e.summary === null) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [i, 'summary'],
+          message: 'a tour needs either places or a summary — the card has a second line to fill',
+        });
+      }
+
+      const seenPlace = new Set<string>();
+      e.places.forEach((place, j) => {
+        if (seenPlace.has(place.name)) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [i, 'places', j, 'name'],
+            message: `place "${place.name}" is listed twice`,
+          });
+        }
+        seenPlace.add(place.name);
+      });
+
+      const seenImage = new Set<string>();
+      e.heroImages.forEach((url, j) => {
+        if (seenImage.has(url)) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [i, 'heroImages', j],
+            message: 'the same image is listed twice in the carousel',
+          });
+        }
+        seenImage.add(url);
+      });
+
+      const seenDay = new Set<string>();
+      e.itinerary.forEach((day, j) => {
+        if (seenDay.has(day.dayLabel)) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [i, 'itinerary', j, 'dayLabel'],
+            message: `day label "${day.dayLabel}" is used twice`,
+          });
+        }
+        seenDay.add(day.dayLabel);
+      });
+    });
+  });
+
+/**
+ * Throws with every problem listed if the catalog is invalid. Called when
+ * data/spiritual-tours.ts is loaded, so a bad edit stops the server at
+ * startup instead of shipping an empty section to customers.
+ */
+export function assertSpiritualTourCatalog(entries: unknown): void {
+  const result = SpiritualTourCatalogSchema.safeParse(entries);
+  if (result.success) return;
+  const issues = result.error.issues
+    .map(i => `  • ${i.path.join('.') || '(root)'}: ${i.message}`)
+    .join('\n');
+  throw new Error(`[config/spiritual-tours] invalid spiritual tour catalog:\n${issues}`);
+}

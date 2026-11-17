@@ -11,6 +11,11 @@ import type { AppConfigQuery } from './schemas.js';
 // reaches clients within minutes; the ETag makes revalidation cheap.
 const BROCHURES_CACHE_CONTROL = 'public, max-age=60, stale-while-revalidate=300';
 
+// Spiritual tours change only on a backend deploy, same as brochures, so the
+// same short max-age applies: ops sees an edit within minutes and the ETag
+// keeps every revalidation in between down to a 304 with no body.
+const SPIRITUAL_TOURS_CACHE_CONTROL = 'public, max-age=60, stale-while-revalidate=300';
+
 export async function getAppConfig(req: Request, res: Response): Promise<Response> {
   const q = req.query as unknown as AppConfigQuery;
 
@@ -38,6 +43,21 @@ export async function getBrochures(req: Request, res: Response): Promise<Respons
 
   // Public: the same catalog for every caller.
   res.setHeader('Cache-Control', BROCHURES_CACHE_CONTROL);
+  res.setHeader('ETag', etag);
+
+  const ifNoneMatch = req.header('if-none-match');
+  if (ifNoneMatch && ifNoneMatch === etag) {
+    return res.status(304).end();
+  }
+
+  return ok(res, data);
+}
+
+export async function getSpiritualTours(req: Request, res: Response): Promise<Response> {
+  const { data, etag } = await service.getSpiritualTours();
+
+  // Public: the same catalog for every caller.
+  res.setHeader('Cache-Control', SPIRITUAL_TOURS_CACHE_CONTROL);
   res.setHeader('ETag', etag);
 
   const ifNoneMatch = req.header('if-none-match');
