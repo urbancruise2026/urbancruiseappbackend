@@ -174,11 +174,11 @@ const SpiritualTourPlaceSchema = z.strictObject({
   imageUrl: httpsUrl.nullable(),
 });
 
-const SpiritualTourFactsSchema = z.strictObject({
-  duration: displayText(40).nullable(),
-  travelMode: displayText(60).nullable(),
-  bestSeason: displayText(40).nullable(),
-  difficulty: displayText(40).nullable(),
+const SpiritualTourFactSchema = z.strictObject({
+  icon: z.enum(['calendar', 'users', 'vehicle', 'clock', 'map-pin', 'sun', 'mountain', 'info']),
+  label: displayText(24),
+  value: displayText(40),
+  note: displayText(40).nullable(),
 });
 
 const SpiritualTourItineraryDaySchema = z.strictObject({
@@ -193,6 +193,41 @@ const SpiritualTourPriceSchema = z.strictObject({
   note: displayText(160).nullable(),
 });
 
+/** Section key: lowercase words joined by hyphens, e.g. "itinerary". */
+const SECTION_ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+const sectionBase = {
+  id: z.string().max(40).regex(SECTION_ID_RE, 'must look like "itinerary"'),
+  title: displayText(40),
+  icon: z.enum(['itinerary', 'check', 'cross', 'rupee', 'info', 'list']),
+  emptyText: displayText(200).nullable(),
+};
+
+const SpiritualTourInfoSectionSchema = z.discriminatedUnion('kind', [
+  z.strictObject({
+    ...sectionBase,
+    kind: z.literal('itinerary'),
+    days: z.array(SpiritualTourItineraryDaySchema).max(40),
+  }),
+  z.strictObject({
+    ...sectionBase,
+    kind: z.literal('list'),
+    marker: z.enum(['check', 'cross', 'dot']),
+    items: z.array(displayText(160)).max(40),
+  }),
+  z.strictObject({
+    ...sectionBase,
+    kind: z.literal('pricing'),
+    rows: z.array(SpiritualTourPriceSchema).max(12),
+    note: displayText(400).nullable(),
+  }),
+  z.strictObject({
+    ...sectionBase,
+    kind: z.literal('text'),
+    body: displayText(2000).nullable(),
+  }),
+]);
+
 export const SpiritualTourEntrySchema = z.strictObject({
   id: z.string().max(64).regex(TOUR_ID_RE, 'must look like "char-dham-yatra"'),
   region: z.enum(['north', 'south', 'east', 'west', 'central', 'northeast']),
@@ -205,16 +240,10 @@ export const SpiritualTourEntrySchema = z.strictObject({
 
   // Detail screen. All optional in practice — empty arrays and nulls are a
   // tour that is listed but not yet written up.
-  tagline: displayText(160).nullable(),
-  heroImages: z.array(httpsUrl).max(10),
-  facts: SpiritualTourFactsSchema,
+  // The strip has room for at most four facts side by side.
+  facts: z.array(SpiritualTourFactSchema).max(4),
   overview: displayText(1200).nullable(),
-  highlights: z.array(displayText(120)).max(12),
-  itinerary: z.array(SpiritualTourItineraryDaySchema).max(40),
-  inclusions: z.array(displayText(160)).max(30),
-  exclusions: z.array(displayText(160)).max(30),
-  pricing: z.array(SpiritualTourPriceSchema).max(12),
-  pricingNote: displayText(400).nullable(),
+  sections: z.array(SpiritualTourInfoSectionSchema).max(10),
 });
 
 /**
@@ -223,7 +252,7 @@ export const SpiritualTourEntrySchema = z.strictObject({
  *   - ids are unique, because the detail screen is addressed by id;
  *   - every entry has something to show under its title — `places` or
  *     `summary` — so no card can render with a blank second line;
- *   - no repeated place name, hero image or itinerary day label inside one
+ *   - no repeated place name, section id or itinerary day label inside one
  *     tour, each of which would be a copy-paste slip rather than intent.
  */
 export const SpiritualTourCatalogSchema = z
@@ -264,28 +293,29 @@ export const SpiritualTourCatalogSchema = z
         seenPlace.add(place.name);
       });
 
-      const seenImage = new Set<string>();
-      e.heroImages.forEach((url, j) => {
-        if (seenImage.has(url)) {
+      const seenSection = new Set<string>();
+      e.sections.forEach((section, j) => {
+        if (seenSection.has(section.id)) {
           ctx.addIssue({
             code: 'custom',
-            path: [i, 'heroImages', j],
-            message: 'the same image is listed twice in the carousel',
+            path: [i, 'sections', j, 'id'],
+            message: `section id "${section.id}" is used twice`,
           });
         }
-        seenImage.add(url);
-      });
+        seenSection.add(section.id);
 
-      const seenDay = new Set<string>();
-      e.itinerary.forEach((day, j) => {
-        if (seenDay.has(day.dayLabel)) {
-          ctx.addIssue({
-            code: 'custom',
-            path: [i, 'itinerary', j, 'dayLabel'],
-            message: `day label "${day.dayLabel}" is used twice`,
-          });
-        }
-        seenDay.add(day.dayLabel);
+        if (section.kind !== 'itinerary') return;
+        const seenDay = new Set<string>();
+        section.days.forEach((day, k) => {
+          if (seenDay.has(day.dayLabel)) {
+            ctx.addIssue({
+              code: 'custom',
+              path: [i, 'sections', j, 'days', k, 'dayLabel'],
+              message: `day label "${day.dayLabel}" is used twice`,
+            });
+          }
+          seenDay.add(day.dayLabel);
+        });
       });
     });
   });
