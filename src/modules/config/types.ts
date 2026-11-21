@@ -115,6 +115,13 @@ export type BrochureEntry = {
   tier: VehicleTier;
   /** Card title, e.g. "Force Traveller 13 Seater — Royal". */
   title: string;
+  /**
+   * Absolute https URL of this vehicle's photograph, or null while ops has
+   * not uploaded one. Null is a normal state: the app draws a branded tile
+   * in its place. The Home "Explore our fleet" card uses the first non-null
+   * imageUrl among a group's entries.
+   */
+  imageUrl: string | null;
   /** The group's playlist; null until ops creates it. */
   youtubePlaylistId: string | null;
   /** Videos for this tier, in display order. Empty means "Coming soon". */

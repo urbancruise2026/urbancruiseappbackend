@@ -33,6 +33,15 @@ export type AppConfigQuery = z.infer<typeof AppConfigQuery>;
 /* ---------- Vehicle brochure catalog (static data, checked at startup) ---------- */
 
 /**
+ * Absolute https URL. http is rejected outright: iOS App Transport Security
+ * and Android's cleartext policy both block it, so an http image would fail
+ * on device rather than merely look wrong.
+ */
+const HTTPS_URL_RE = /^https:\/\/[^\s<>"]+$/;
+
+const httpsUrl = z.string().max(500).regex(HTTPS_URL_RE, 'must be an absolute https URL');
+
+/**
  * YouTube video and playlist ids are used only inside URLs the app builds.
  * YouTube does not publish a fixed format, so this checks a URL-safe
  * character set and a sane length instead of an exact shape.
@@ -56,6 +65,7 @@ export const BrochureEntrySchema = z.strictObject({
   seater: z.number().int().min(1).max(100),
   tier: z.enum(['economy', 'premium', 'royal', 'royal_vip']),
   title: displayText(120),
+  imageUrl: httpsUrl.nullable(),
   youtubePlaylistId: z.string().regex(YOUTUBE_ID_RE, 'invalid YouTube playlist id').nullable(),
   videoIds: z.array(z.string().regex(YOUTUBE_ID_RE, 'invalid YouTube video id')).max(20),
   features: z.array(displayText(60)).max(30),
@@ -159,15 +169,6 @@ export function assertBrochureCatalog(entries: unknown): void {
 
 /** Lowercase words joined by single hyphens, e.g. "char-dham-yatra". */
 const TOUR_ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-
-/**
- * Absolute https URL. http is rejected outright: iOS App Transport Security
- * and Android's cleartext policy both block it, so an http image would fail
- * on device rather than merely look wrong.
- */
-const HTTPS_URL_RE = /^https:\/\/[^\s<>"]+$/;
-
-const httpsUrl = z.string().max(500).regex(HTTPS_URL_RE, 'must be an absolute https URL');
 
 const SpiritualTourPlaceSchema = z.strictObject({
   name: displayText(60),

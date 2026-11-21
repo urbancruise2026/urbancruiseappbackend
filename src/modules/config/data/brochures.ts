@@ -15,6 +15,8 @@
  * Moving this to a database later only changes the loader in service.ts.
  *
  * TODO(ops): fill youtubePlaylistId and videoIds once the playlists exist.
+ * TODO(ops): every imageUrl is null. Upload one photograph per vehicle and
+ * put its absolute https URL in imageUrl (http is rejected at startup).
  * TODO(data): confirm every feature and spec value with ops.
  *
  * The catalog is validated when this file loads; a bad edit stops the
@@ -52,6 +54,7 @@ export const BROCHURES: readonly BrochureEntry[] = [
     seater: 12,
     tier: 'royal_vip',
     title: 'Force Traveller 12 Seater — Royal VIP',
+    imageUrl: null,
     youtubePlaylistId: null,
     videoIds: ['ERSeZAtyCNs'],
     features: [
@@ -83,6 +86,7 @@ export const BROCHURES: readonly BrochureEntry[] = [
     seater: 13,
     tier: 'economy',
     title: 'Force Traveller 13 Seater — Economy',
+    imageUrl: null,
     youtubePlaylistId: null,
     videoIds: ['crTGevmpaf4'],
     // TODO(data): the source description ends with just "Basic" (the app's
@@ -105,6 +109,7 @@ export const BROCHURES: readonly BrochureEntry[] = [
     seater: 13,
     tier: 'premium',
     title: 'Force Traveller 13 Seater — Premium',
+    imageUrl: null,
     youtubePlaylistId: null,
     videoIds: ['KEKIxqXUy08'],
     features: ['2018-20 Model', 'A/C', 'Recline Seat', 'Charging Point', 'Music System + Speaker'],
@@ -125,6 +130,7 @@ export const BROCHURES: readonly BrochureEntry[] = [
     seater: 13,
     tier: 'royal',
     title: 'Force Traveller 13 Seater — Royal',
+    imageUrl: null,
     youtubePlaylistId: null,
     videoIds: ['NStb4xBupXo'],
     features: [...ROYAL_TRAVELLER_FEATURES],
@@ -138,6 +144,7 @@ export const BROCHURES: readonly BrochureEntry[] = [
     seater: 26,
     tier: 'royal',
     title: 'Force Traveller 26 Seater — Royal',
+    imageUrl: null,
     youtubePlaylistId: null,
     videoIds: ['YuISGPswwBA'],
     // TODO(data): the app copies this description from the 13-seat Royal.
@@ -155,6 +162,7 @@ export const BROCHURES: readonly BrochureEntry[] = [
     seater: 15,
     tier: 'royal_vip',
     title: 'Force Urbania 15 Seater — Royal VIP',
+    imageUrl: null,
     youtubePlaylistId: null,
     videoIds: ['9bEwEf-efxM'],
     features: [
