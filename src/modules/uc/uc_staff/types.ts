@@ -15,6 +15,15 @@ export type StaffDirectoryItem = {
   /** first + middle + last. '' when all three are empty. */
   name: string;
   /**
+   * The name the staff member goes by at work (saarthi.uc_staff.alias_name),
+   * e.g. 'Amit' for Abhishek Sharma. First letter capitalised for display
+   * ('swara' → 'Swara'); the rest is kept as typed in Saarthi. null when not
+   * set. The app shows it as the card title (falling back to `name`) and
+   * `name` in the contact sheet. The list's A–Z sort and its search both use
+   * it.
+   */
+  aliasName: string | null;
+  /**
    * Department name, trimmed. One of Sales, Finance, IT, HR, VEH OPS,
    * Digital Marketing (live values, 13 Nov 2026). null when not set — the
    * app then draws no badge. Free text by design: a new department needs no
@@ -27,6 +36,11 @@ export type StaffDirectoryItem = {
   reportingManagerId: string | null;
   /** The manager's full name, joined server-side. null when no manager. */
   reportingManagerName: string | null;
+  /**
+   * The manager's alias, capitalised the same way as `aliasName`. null when
+   * there is no manager or the manager has no alias.
+   */
+  reportingManagerAlias: string | null;
   /**
    * Office number — the number UC staff sign in with. null for the 22 active
    * staff who have none in Saarthi (verified 13 Nov 2026); the app then draws

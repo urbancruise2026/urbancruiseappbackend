@@ -27,10 +27,19 @@ import type { StaffListQuery } from './types.js';
 /* ------------------------------------------------------------------ */
 
 /**
- * Card title. The view already turns blank parts into NULL, so CONCAT_WS
+ * Full name. The view already turns blank parts into NULL, so CONCAT_WS
  * drops them; a row with no name at all becomes ''.
  */
 const NAME_EXPR = `COALESCE(CONCAT_WS(' ', v.firstName, v.middleName, v.lastName), '')`;
+
+/**
+ * Sort key for 'nameAsc': the name on the card — the alias when set,
+ * otherwise the full name. The view turns a blank alias into NULL, so
+ * COALESCE falls through to the full name. The collation is
+ * case-insensitive, so 'swara' and 'Swara' sort the same; capitalising
+ * the first letter for display (in the service) cannot change the order.
+ */
+const DISPLAY_NAME_EXPR = `COALESCE(v.aliasName, ${NAME_EXPR})`;
 
 /**
  * Sort key for 'newest' / 'oldest': the real joining date. Rows without one
@@ -44,8 +53,9 @@ const ID_EXPR = 'v.id';
 /** Shared by both shapes. The HR shape appends personalMobile. */
 const BASE_COLUMNS = `v.id,
               ${NAME_EXPR} AS name,
+              v.aliasName,
               v.department, v.subDepartment,
-              v.managerId, v.managerName,
+              v.managerId, v.managerName, v.managerAlias,
               v.officeMobileNumber, v.email, v.branch,
               v.employeeStatus,
               ${DATE_EXPR} AS joined_epoch`;
@@ -57,10 +67,12 @@ const BASE_COLUMNS = `v.id,
 export type StaffRow = RowDataPacket & {
   id: number;
   name: string;
+  aliasName: string | null;
   department: string | null;
   subDepartment: string | null;
   managerId: number | null;
   managerName: string | null;
+  managerAlias: string | null;
   officeMobileNumber: string | null;
   email: string | null;
   branch: string | null;
@@ -91,12 +103,15 @@ function filterSql(
 
   if (q.search) {
     const like = likeContains(q.search);
+    // Full name OR alias, so 'Abhishek' and 'Amit' both find Abhishek
+    // Sharma (alias Amit).
     const parts = [
       `${NAME_EXPR} LIKE ? ESCAPE '\\\\'`,
+      `v.aliasName LIKE ? ESCAPE '\\\\'`,
       `v.email LIKE ? ESCAPE '\\\\'`,
       `v.branch LIKE ? ESCAPE '\\\\'`,
     ];
-    params.push(like, like, like);
+    params.push(like, like, like, like);
 
     // A phone matches only the COMPLETE number, never part of it — the app
     // masks phones, so partial digits must not reveal them. Same rule as the
@@ -145,7 +160,7 @@ async function listFrom<T extends StaffRow>(
   const cursor = q.cursor ? decodeCursor(q.cursor, q.sortBy) : null;
   const ks = keyset(
     q.sortBy,
-    { dateExpr: DATE_EXPR, nameExpr: NAME_EXPR, idExpr: ID_EXPR },
+    { dateExpr: DATE_EXPR, nameExpr: DISPLAY_NAME_EXPR, idExpr: ID_EXPR },
     cursor,
   );
 

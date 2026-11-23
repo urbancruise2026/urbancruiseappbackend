@@ -14,6 +14,7 @@
 import { encodeCursor, epochToIso, text, type DirectoryPage } from '../directory.js';
 import { loadViewerAccess } from '../viewer.js';
 import { canSeePersonalNumbers } from '../workspace.js';
+import { displayAlias } from './alias.js';
 import * as repo from './repository.js';
 import type { StaffDirectoryItem, StaffListQuery } from './types.js';
 
@@ -22,10 +23,12 @@ function toItem(r: repo.StaffRow): StaffDirectoryItem {
   return {
     id: String(r.id),
     name: text(r.name) ?? '',
+    aliasName: displayAlias(r.aliasName),
     department: text(r.department),
     subDepartment: text(r.subDepartment),
     reportingManagerId: r.managerId === null ? null : String(r.managerId),
     reportingManagerName: text(r.managerName),
+    reportingManagerAlias: displayAlias(r.managerAlias),
     phone: text(r.officeMobileNumber),
     email: text(r.email),
     city: text(r.branch),

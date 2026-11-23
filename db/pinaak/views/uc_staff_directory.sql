@@ -55,9 +55,10 @@ CREATE USER IF NOT EXISTS 'uc_staff_view_definer'@'localhost'
   IDENTIFIED BY RANDOM PASSWORD
   ACCOUNT LOCK;
 
--- Existing columns plus department_id, sub_department_id, manager_id.
+-- Existing columns plus department_id, sub_department_id, manager_id and
+-- alias_name (the name staff go by at work; added 21 Nov 2026).
 GRANT SELECT (id, first_name, middle_name, last_name, is_active, created_at,
-              department_id, sub_department_id, manager_id)
+              department_id, sub_department_id, manager_id, alias_name)
   ON saarthi.uc_staff              TO 'uc_staff_view_definer'@'localhost';
 
 -- `mobile` is the personal number. Read ONLY by uc_staff_directory_hr.
@@ -102,6 +103,13 @@ SELECT
   NULLIF(TRIM(s.middle_name), '')                             AS middleName,
   NULLIF(TRIM(s.last_name),   '')                             AS lastName,
 
+  -- The name the staff member goes by at work (saarthi.uc_staff.alias_name),
+  -- e.g. 'Amit' for Abhishek Sharma. The app shows it as the card title and
+  -- the full name in the contact sheet. NULL when not set; the app then
+  -- falls back to the full name. Stored as typed in Saarthi: the API, not
+  -- this view, capitalises the first letter for display.
+  NULLIF(TRIM(s.alias_name),  '')                             AS aliasName,
+
   -- Office contact only. Personal email is deliberately absent.
   NULLIF(TRIM(c.office_email),  '')                           AS email,
   NULLIF(TRIM(c.office_number), '')                           AS officeMobileNumber,
@@ -118,6 +126,7 @@ SELECT
     NULLIF(TRIM(m.first_name),  ''),
     NULLIF(TRIM(m.middle_name), ''),
     NULLIF(TRIM(m.last_name),   '')), '')                     AS managerName,
+  NULLIF(TRIM(m.alias_name), '')                              AS managerAlias,
 
   -- Real joining date, NOT the HR record's creation date. NULL for staff with
   -- no uc_staff_employment row, and for staff id 1, who is Active with no
@@ -154,7 +163,8 @@ LEFT JOIN saarthi.uc_staff            m  ON m.id        = s.manager_id;
 --
 -- CAUTION: `v.*` is expanded when this view is CREATED. If you ever add a
 -- column to uc_staff_directory above, you MUST re-run this statement too, or
--- the HR list will silently be missing the new column.
+-- the HR list will silently be missing the new column. (21 Nov 2026:
+-- re-run for aliasName and managerAlias.)
 
 GRANT SELECT ON pinaak.uc_staff_directory TO 'uc_staff_view_definer'@'localhost';
 
