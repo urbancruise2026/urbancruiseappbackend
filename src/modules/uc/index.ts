@@ -7,6 +7,7 @@
  *   /vendors    — UC Directory vendors list
  *   /drivers    — UC Directory drivers list
  *   /staff      — UC Directory staff list
+ *   /caller-id  — customer numbers for the caller-ID overlay on staff phones
  *
  * Still stubs (not mounted): quotations, dashboard.
  */
@@ -16,6 +17,7 @@ import customersRouter from './customers/routes.js';
 import vendorsRouter from './vendors/routes.js';
 import driversRouter from './drivers/routes.js';
 import staffRouter from './uc_staff/routes.js';
+import callerIdRouter from './caller_id/routes.js';
 
 export default {
   mount(): Router {
@@ -27,6 +29,7 @@ export default {
     r.use('/vendors', vendorsRouter);
     r.use('/drivers', driversRouter);
     r.use('/staff', staffRouter);
+    r.use('/caller-id', callerIdRouter);
     return r;
   },
 };

@@ -70,6 +70,11 @@ const MATRIX: Record<string, Rule> = {
   // picks a database view that has no personal-number column for everyone
   // outside HR.
   'read:DirectoryStaffPersonalPhone': ucStaff,
+
+  // Caller ID: every UC staff member, every department. The role gate only;
+  // the "still Active in Saarthi" check runs per request in
+  // modules/uc/caller_id/service.ts.
+  'read:CallerIdDirectory': ucStaff,
 };
 
 export function can(identity: Identity, action: Action, subject: Subject): boolean {

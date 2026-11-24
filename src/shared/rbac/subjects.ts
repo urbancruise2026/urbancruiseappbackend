@@ -18,4 +18,8 @@ export type Subject =
   | 'DirectoryStaff'
   // The personal-mobile column inside the staff list. Kept apart from
   // 'DirectoryStaff' so tightening or widening one never moves the other.
-  | 'DirectoryStaffPersonalPhone';
+  | 'DirectoryStaffPersonalPhone'
+  // Caller-ID snapshot: every customer's number + name, type and city, for
+  // the overlay card on UC staff phones. Kept apart from
+  // 'DirectoryCustomer' because the two have different department rules.
+  | 'CallerIdDirectory';
