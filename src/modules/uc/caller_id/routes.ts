@@ -3,7 +3,7 @@
  *
  * GET /snapshot — customers only. Kept for app builds that only know the
  *                 customer card (they would show a vendor as "Customer").
- * GET /contacts — customers, vendors, drivers and active UC staff, for app
+ * GET /contacts — customers, vendors, drivers and UC staff, for app
  *                 builds with the four card types (24 Nov 2026).
  *
  * UC staff only; Active status checked per request in the service.

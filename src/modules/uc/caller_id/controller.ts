@@ -39,7 +39,7 @@ export const getCallerIdSnapshot = asyncHandler(async (req: Request, res: Respon
 
 /**
  * GET /api/v1/uc/caller-id/contacts — customers, vendors, drivers and
- * active UC staff (app builds with the four card types).
+ * UC staff (app builds with the four card types).
  *   → 200 { data: { version, generatedAt, entries, ambiguousCount } }
  *   → 304 (no body) when If-None-Match equals the current version
  *   → 403 CALLER_ID_REVOKED when the caller is no longer Active

@@ -155,14 +155,28 @@ export type CallerIdStaffRow = RowDataPacket & {
   subDepartment: string | null;
   branch: string | null;
   officeMobileNumber: string | null;
+  /** 'Active' | 'Inactive' (Saarthi). */
+  employeeStatus: string | null;
 };
 
 /**
- * ACTIVE UC staff with a WORK number, from the uc_staff_directory view
- * (Saarthi). Never the personal mobile: that one is HR-only (product
- * decision, 24 Nov 2026), and this list goes to every staff phone.
+ * EVERY UC staff member with a WORK number, active or not, from the
+ * uc_staff_directory view (Saarthi). Never the personal mobile: that one
+ * is HR-only (product decision, 24 Nov 2026), and this list goes to every
+ * staff phone.
+ *
+ * ORDER IS THE RULE for a work number held by several staff (product
+ * decision, 25 Nov 2026): the first row holding a number wins, so rows
+ * come
+ *   1. active before inactive — an office SIM handed to a new joiner
+ *      shows the new joiner, not the person who left;
+ *   2. then oldest Saarthi record first (created_at) — "who got the
+ *      number first"; Saarthi keeps no number-assignment date;
+ *   3. then lowest id — two records created in the same second still
+ *      come out in the same order on every phone, every time.
+ * A record with no created_at sorts after those that have one.
  */
-export async function listActiveStaffWithPhones(): Promise<CallerIdStaffRow[]> {
+export async function listStaffWithPhones(): Promise<CallerIdStaffRow[]> {
   const [rows] = await pool.query<CallerIdStaffRow[]>(
     `SELECT v.id,
             COALESCE(CONCAT_WS(' ', v.firstName, v.middleName, v.lastName), '') AS name,
@@ -170,11 +184,14 @@ export async function listActiveStaffWithPhones(): Promise<CallerIdStaffRow[]> {
             v.department,
             v.subDepartment,
             v.branch,
-            v.officeMobileNumber
+            v.officeMobileNumber,
+            v.employeeStatus
        FROM uc_staff_directory v
-      WHERE v.employeeStatus = 'Active'
-        AND v.officeMobileNumber IS NOT NULL
-      ORDER BY v.id`,
+      WHERE v.officeMobileNumber IS NOT NULL
+      ORDER BY (v.employeeStatus = 'Active') DESC,
+               (v.createdAt IS NULL) ASC,
+               v.createdAt ASC,
+               v.id ASC`,
   );
   return rows;
 }

@@ -94,7 +94,7 @@ export type CallerIdContact = {
   /**
    * A small tag next to the name, decided here so the rules can change
    * without an app update. Today: 'Inactive' for suspended or inactive
-   * vendors. null = no tag.
+   * vendors and for inactive UC staff. null = no tag.
    */
   badge: string | null;
 };
@@ -105,8 +105,9 @@ export type CallerIdContactsSnapshot = {
   generatedAt: string;
   entries: CallerIdContact[];
   /**
-   * Numbers left out because two or more different people of the SAME
-   * kind share them (the highest-priority kind holding the number).
+   * Numbers left out because two or more different customers, vendors or
+   * drivers share them (the highest-priority kind holding the number).
+   * Never staff: a shared staff number goes to its first holder.
    */
   ambiguousCount: number;
 };

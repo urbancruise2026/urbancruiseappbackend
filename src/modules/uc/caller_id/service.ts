@@ -4,7 +4,7 @@
  * TWO LISTS
  *   getSnapshot()  — customers only, for app builds that only know the
  *                    customer card (GET /snapshot). Unchanged since 23 Nov.
- *   getContacts()  — customers, vendors, drivers and active UC staff, for
+ *   getContacts()  — customers, vendors, drivers and UC staff, for
  *                    app builds with the four card types (GET /contacts).
  *
  * WHO MAY DOWNLOAD THEM
@@ -23,9 +23,14 @@
  *   - One person may have two numbers: both identify them.
  *   - One number in two lists: the first kind in CALLER_ID_KINDS wins —
  *     customer → vendor → driver → staff (product decision, 24 Nov 2026).
- *   - One number on two or more DIFFERENT people of the kind that holds it
+ *   - One number on two or more DIFFERENT customers, vendors or drivers
  *     is ambiguous: it is left out completely (never handed to a lower
  *     kind either) and counted in ambiguousCount. Never guess.
+ *   - UC staff are the exception (product decision, 25 Nov 2026): a work
+ *     number held by several staff shows ONE of them — active before
+ *     inactive, then whoever got the number first (oldest Saarthi record,
+ *     then lowest id). The order comes from repo.listStaffWithPhones();
+ *     the first staff row holding a number wins.
  *   - Someone with no name to show is left out.
  *
  * WHAT EACH KIND SHOWS (product decisions, 24 Nov 2026)
@@ -34,7 +39,8 @@
  *             or inactive
  *   driver    driver name; 'Driver · <vendor>'; city
  *   staff     alias (first letter capitalised), else full name;
- *             department + branch; ACTIVE staff and WORK numbers only
+ *             department + branch; WORK numbers only; 'Inactive' tag for
+ *             inactive staff — status never hides a caller (25 Nov 2026)
  *
  * CACHING
  *   Each list is the same for every caller, so each server process keeps
@@ -193,6 +199,10 @@ function driverPeople(rows: repo.CallerIdDriverRow[]): PersonWithPhones[] {
   return out;
 }
 
+/**
+ * Keeps the repository's order (active first, then oldest record, then
+ * lowest id): merge() lets the first staff row holding a number win.
+ */
 function staffPeople(rows: repo.CallerIdStaffRow[]): PersonWithPhones[] {
   const out: PersonWithPhones[] = [];
   for (const r of rows) {
@@ -208,6 +218,7 @@ function staffPeople(rows: repo.CallerIdStaffRow[]): PersonWithPhones[] {
         name,
         department: dept && sub && sub !== dept ? `${dept} · ${sub}` : (dept ?? sub),
         branch: text(r.branch),
+        badge: text(r.employeeStatus)?.toLowerCase() === 'active' ? null : INACTIVE_BADGE,
       },
       phones: phonesOf(r.officeMobileNumber),
     });
@@ -223,9 +234,16 @@ function staffPeople(rows: repo.CallerIdStaffRow[]): PersonWithPhones[] {
 type Claim = { kind: CallerIdKind; person: Person | null };
 
 /**
+ * Kinds where a shared number goes to the FIRST person in list order
+ * instead of being left out (product decision, 25 Nov 2026).
+ */
+const FIRST_HOLDER_WINS: ReadonlySet<CallerIdKind> = new Set(['staff']);
+
+/**
  * Merges the lists in CALLER_ID_KINDS order. A number claimed by an
  * earlier kind is never taken by a later one, even when it is ambiguous
- * there (a later kind must not "win" a number by default).
+ * there (a later kind must not "win" a number by default). Within a kind
+ * in FIRST_HOLDER_WINS, the first person holding a number keeps it.
  */
 function merge(byKind: Record<CallerIdKind, PersonWithPhones[]>): {
   entries: CallerIdContact[];
@@ -242,6 +260,7 @@ function merge(byKind: Record<CallerIdKind, PersonWithPhones[]>): {
           continue;
         }
         if (claim.kind !== kind) continue; // a higher-priority kind holds it
+        if (FIRST_HOLDER_WINS.has(kind)) continue; // first holder keeps it
         if (claim.person && claim.person.id !== person.id) {
           claims.set(phone, { kind, person: null }); // ambiguous for good
         }
@@ -298,7 +317,7 @@ async function buildContacts(): Promise<CallerIdContactsSnapshot> {
     repo.listCustomersWithPhones(),
     repo.listVendorsWithPhones(),
     repo.listDriversWithPhones(),
-    repo.listActiveStaffWithPhones(),
+    repo.listStaffWithPhones(),
   ]);
 
   const { entries, ambiguousCount } = merge({
@@ -345,7 +364,7 @@ export async function getSnapshot(staffId: string): Promise<CallerIdSnapshot> {
 }
 
 /**
- * Customers, vendors, drivers and active UC staff. Throws 403
+ * Customers, vendors, drivers and UC staff. Throws 403
  * CALLER_ID_REVOKED when the caller is no longer Active.
  */
 export async function getContacts(staffId: string): Promise<CallerIdContactsSnapshot> {
